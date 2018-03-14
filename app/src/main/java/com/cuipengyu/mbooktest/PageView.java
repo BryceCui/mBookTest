@@ -105,24 +105,7 @@ public class PageView extends View {
         canvas.drawText("d", mBeziervertex1.x, mBeziervertex1.y, mPaint);
         canvas.drawText("i", mBeziervertex2.x, mBeziervertex2.y, mPaint);
         canvas.restore();
-        /**
-         * mPath0.moveTo(jx, jy);
-         mPath0.quadTo(hx, hy, kx, ky);
-         mPath0.lineTo(ax, ay);
-         mPath0.lineTo(bx, by);
-         mPath0.quadTo(ex, ey, cx,cy);
-         mPath0.lineTo(fx, fy);
-         mPath0.close();
-         */
-//        mPath0.moveTo(mBezierStart2.x, mBezierStart2.y);
-//        mPath0.quadTo(mBezierControl2.x, mBezierControl2.y, mBezierEnd2.x, mBezierEnd2.y);
-//        mPath0.lineTo(mTouchX, mTouchY);
-//        mPath0.lineTo(mBezierEnd1.x, mBezierEnd1.y);
-//        mPath0.quadTo(mBezierControl1.x, mBezierControl1.y, mBezierStart1.x, mBezierStart1.y);
-//        mPath0.lineTo(mCornerX, mCornerY);
-//        mPath0.close();
-//        canvas.drawPath(mPath0, mPaint);
-//        canvas.clipPath(mPath0, Region.Op.XOR);
+
         mPath0.reset();
         mPath0.moveTo(mBezierStart1.x, mBezierStart1.y);
         mPath0.quadTo(mBezierControl1.x, mBezierControl1.y, mBezierEnd1.x,
@@ -133,10 +116,47 @@ public class PageView extends View {
                 mBezierStart2.y);
         mPath0.lineTo(mCornerX, mCornerY);
         mPath0.close();
+        canvas.save();
         canvas.drawPath(mPath0, mPaint);
         canvas.clipPath(mPath0, Region.Op.XOR);
+        //TODO         canvas.drawBitmap(bitmap, 0, 0, null);
+        canvas.restore();
+    }
 
+    /**
+     * 绘制当前页面区域
+     * @param canvas
+     * @param bitmap
+     * @param path
+     */
+    private void drawCurrentPageArea(Canvas canvas, Bitmap bitmap, Path path) {
+        /**
+         * mPath0.moveTo(cx, cy);
+         mPath0.quadTo(ex, ey, bx, by);
+         mPath0.lineTo(ax, ay);
+         mPath0.lineTo(kx, ky);
+         mPath0.quadTo(hx, hy, jx,jy);
+         mPath0.lineTo(fx, fy);
+         mPath0.close();
+         */
+        mPath0.reset();
+        mPath0.moveTo(mBezierStart1.x, mBezierStart1.y);
+        mPath0.quadTo(mBezierControl1.x, mBezierControl1.y, mBezierEnd1.x,
+                mBezierEnd1.y);
+        mPath0.lineTo(mTouchX, mTouchY);
+        mPath0.lineTo(mBezierEnd2.x, mBezierEnd2.y);
+        mPath0.quadTo(mBezierControl2.x, mBezierControl2.y, mBezierStart2.x,
+                mBezierStart2.y);
+        mPath0.lineTo(mCornerX, mCornerY);
+        mPath0.close();
+        canvas.save();
+        canvas.clipPath(path, Region.Op.XOR);
+        canvas.drawBitmap(bitmap, 0, 0, null);
+        try {
+            canvas.restore();
+        } catch (Exception e) {
 
+        }
     }
 
     private void init() {
