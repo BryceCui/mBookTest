@@ -5,13 +5,14 @@ import android.os.Bundle;
 import android.util.Log;
 
 public class MainActivity extends AppCompatActivity {
+    private PageView mPageview;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        float w = AppScreenUtil.getmAppScreenUtil().getAppWidth();
-        float h = AppScreenUtil.getmAppScreenUtil().getAppHeight();
+        mPageview = findViewById(R.id.mPageview);
+        mPageview = new PageView(this);
 
     }
 }

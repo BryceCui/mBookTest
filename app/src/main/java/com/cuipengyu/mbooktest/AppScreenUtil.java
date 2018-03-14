@@ -14,11 +14,11 @@ public class AppScreenUtil {
         return mAppScreenUtil;
     }
 
-    public float getAppWidth() {
+    public int getAppWidth() {
         return AppConnextUtil.getAppConnect().getResources().getDisplayMetrics().widthPixels;
     }
 
-    public float getAppHeight() {
+    public int getAppHeight() {
         return AppConnextUtil.getAppConnect().getResources().getDisplayMetrics().heightPixels;
     }
 }
