@@ -4,10 +4,14 @@ import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
+import android.graphics.ColorMatrix;
+import android.graphics.ColorMatrixColorFilter;
+import android.graphics.Matrix;
 import android.graphics.Paint;
 import android.graphics.Path;
 import android.graphics.PointF;
 import android.graphics.Region;
+import android.graphics.drawable.GradientDrawable;
 import android.support.annotation.Nullable;
 import android.util.AttributeSet;
 import android.view.MotionEvent;
@@ -20,7 +24,21 @@ import android.view.View;
 public class PageView extends View {
     private Paint mPaint;//画笔
     float mTouchToCornerDis;
+    float[] mMatrixArray = {0, 0, 0, 0, 0, 0, 0, 0, 1.0f};
+    private float mMaxLength;
+    Matrix mMatrix;
+    ColorMatrixColorFilter mColorMatrixFilter;
+    int[] mBackShadowColors;// 背面颜色组
+    int[] mFrontShadowColors;// 前面颜色组
+    GradientDrawable mBackShadowDrawableLR; // 有阴影的GradientDrawable
+    GradientDrawable mBackShadowDrawableRL;
+    GradientDrawable mFolderShadowDrawableLR;
+    GradientDrawable mFolderShadowDrawableRL;
 
+    GradientDrawable mFrontShadowDrawableHBT;
+    GradientDrawable mFrontShadowDrawableHTB;
+    GradientDrawable mFrontShadowDrawableVLR;
+    GradientDrawable mFrontShadowDrawableVRL;
     Bitmap mCurPageBitmap = null; // 当前页
     Bitmap mNextPageBitmap = null;
     /**
@@ -79,8 +97,8 @@ public class PageView extends View {
      * 是否属于右上左下
      */
     boolean mIsRTandLB;
-    private Bitmap bitmap;
-    private Canvas bitmapCanvas;
+
+    private float mDegrees; //角度
 
     public PageView(Context context) {
         super(context);
@@ -104,8 +122,8 @@ public class PageView extends View {
         canvas.drawText("j", mBezierStart2.x, mBezierStart2.y, mPaint);
         canvas.drawText("d", mBeziervertex1.x, mBeziervertex1.y, mPaint);
         canvas.drawText("i", mBeziervertex2.x, mBeziervertex2.y, mPaint);
-        canvas.restore();
-
+        //绘制当前页
+        //TODO        drawCurrentPageArea
         mPath0.reset();
         mPath0.moveTo(mBezierStart1.x, mBezierStart1.y);
         mPath0.quadTo(mBezierControl1.x, mBezierControl1.y, mBezierEnd1.x,
@@ -119,12 +137,28 @@ public class PageView extends View {
         canvas.save();
         canvas.drawPath(mPath0, mPaint);
         canvas.clipPath(mPath0, Region.Op.XOR);
-        //TODO         canvas.drawBitmap(bitmap, 0, 0, null);
+
         canvas.restore();
+        //绘制翻起背面
+        //TODO        drawCurrentBackArea
+        mPath1.reset();
+        mPath1.moveTo(mBeziervertex2.x, mBeziervertex2.y);
+        mPath1.lineTo(mBeziervertex1.x, mBeziervertex1.y);
+        mPath1.lineTo(mBezierEnd1.x, mBezierEnd1.y);
+        mPath1.lineTo(mTouchX, mTouchY);
+        mPath1.lineTo(mBezierEnd2.x, mBezierEnd2.y);
+        canvas.save();
+        canvas.drawPath(mPath1, mPaint);
+        canvas.clipPath(mPath1, Region.Op.XOR);
+        mDegrees = (float) Math.toDegrees(Math.atan2(mBezierControl1.x
+                - mCornerX, mBezierControl2.y - mCornerY));
+        canvas.rotate(mDegrees, mBezierStart1.x, mBezierStart1.y);
+
     }
 
     /**
      * 绘制当前页面区域
+     *
      * @param canvas
      * @param bitmap
      * @param path
@@ -132,12 +166,13 @@ public class PageView extends View {
     private void drawCurrentPageArea(Canvas canvas, Bitmap bitmap, Path path) {
         /**
          * mPath0.moveTo(cx, cy);
-         mPath0.quadTo(ex, ey, bx, by);
-         mPath0.lineTo(ax, ay);
-         mPath0.lineTo(kx, ky);
-         mPath0.quadTo(hx, hy, jx,jy);
-         mPath0.lineTo(fx, fy);
-         mPath0.close();
+         * mPath0.quadTo(ex, ey, bx, by);
+         * mPath0.lineTo(ax, ay);
+         * mPath0.lineTo(kx, ky);
+         * mPath0.quadTo(hx, hy, jx,jy);
+         * mPath0.lineTo(fx, fy);
+         * mPath0.close();
+         * canvas.restore(); 此调用将先前调用save（），并用于移除自上次保存调用以来对矩阵/剪辑状态的所有修改。
          */
         mPath0.reset();
         mPath0.moveTo(mBezierStart1.x, mBezierStart1.y);
@@ -159,7 +194,94 @@ public class PageView extends View {
         }
     }
 
+    /**
+     * 绘制翻起页背面
+     *
+     * @param canvas
+     * @param bitmap
+     */
+    private void drawCurrentBackArea(Canvas canvas, Bitmap bitmap) {
+        //  (cx+ex)/2
+        int i = (int) (mBezierStart1.x + mBezierControl1.x) / 2;
+        // Math.abs返回 double 值的绝对值
+        float f1 = Math.abs(i - mBezierControl1.x);
+        //   (jy+hy)/2
+        int i1 = (int) (mBezierStart2.y + mBezierControl2.y) / 2;
+        float f2 = Math.abs(i1 - mBezierControl2.y);
+        //比较结果中返回较小的那个数值
+        float f3 = Math.min(f1, f2);
+        /**
+         *  mPath1.moveTo
+         *  mPath1.lineTo
+         *  mPath1.lineTo
+         *  mPath1.lineTo
+         *  mPath1.lineTo
+         */
+        mPath1.reset();
+        mPath1.moveTo(mBeziervertex2.x, mBeziervertex2.y);
+        mPath1.lineTo(mBeziervertex1.x, mBeziervertex1.y);
+        mPath1.lineTo(mBezierEnd1.x, mBezierEnd1.y);
+        mPath1.lineTo(mTouchX, mTouchY);
+        mPath1.lineTo(mBezierEnd2.x, mBezierEnd2.y);
+        mPath1.close();
+        GradientDrawable mFolderShadowDrawable;
+        int left;
+        int right;
+        if (mIsRTandLB) {
+            left = (int) (mBezierStart1.x - 1);
+            right = (int) (mBezierStart1.x + f3 + 1);
+            mFolderShadowDrawable = mFolderShadowDrawableLR;
+        } else {
+            left = (int) (mBezierStart1.x - f3 - 1);
+            right = (int) (mBezierStart1.x + 1);
+            mFolderShadowDrawable = mFolderShadowDrawableRL;
+        }
+        canvas.save();
+        try {
+            canvas.clipPath(mPath0);
+            canvas.clipPath(mPath1, Region.Op.INTERSECT);
+        } catch (Exception e) {
+        }
+
+        mPaint.setColorFilter(mColorMatrixFilter);
+        //对Bitmap进行取色
+        int color = bitmap.getPixel(1, 1);
+        //获取对应的三色
+        int red = (color & 0xff0000) >> 16;
+        int green = (color & 0x00ff00) >> 8;
+        int blue = (color & 0x0000ff);
+        //转换成含有透明度的颜色
+        int tempColor = Color.argb(200, red, green, blue);
+
+        //返回它的所有参数的平方和的平方根
+        float dis = (float) Math.hypot(mCornerX - mBezierControl1.x,
+                mBezierControl2.y - mCornerY);
+        float f8 = (mCornerX - mBezierControl1.x) / dis;
+        float f9 = (mBezierControl2.y - mCornerY) / dis;
+        mMatrixArray[0] = 1 - 2 * f9 * f9;
+        mMatrixArray[1] = 2 * f8 * f9;
+        mMatrixArray[3] = mMatrixArray[1];
+        mMatrixArray[4] = 1 - 2 * f8 * f8;
+        //TODO  矩阵的学习
+        mMatrix.reset();
+        mMatrix.setValues(mMatrixArray);
+        mMatrix.preTranslate(-mBezierControl1.x, -mBezierControl1.y);
+        mMatrix.postTranslate(mBezierControl1.x, mBezierControl1.y);
+        canvas.drawBitmap(bitmap, mMatrix, mPaint);
+        //背景叠加
+        canvas.drawColor(tempColor);
+
+        mPaint.setColorFilter(null);
+
+        canvas.rotate(mDegrees, mBezierStart1.x, mBezierStart1.y);
+        mFolderShadowDrawable.setBounds(left, (int) mBezierStart1.y, right,
+                (int) (mBezierStart1.y + mMaxLength));
+        mFolderShadowDrawable.draw(canvas);
+        canvas.restore();
+    }
+
     private void init() {
+
         mViewWidth = AppScreenUtil.getmAppScreenUtil().getAppWidth();
         mViewHeight = AppScreenUtil.getmAppScreenUtil().getAppHeight();
         mTouchX = 0.01f; // 不让x,y为0,否则在点计算时会有问题
@@ -170,7 +292,14 @@ public class PageView extends View {
         mPaint.setColor(Color.RED);
         mPaint.setStyle(Paint.Style.STROKE);
         mPaint.setTextSize(20);
-
+        ColorMatrix cm = new ColorMatrix();//设置颜色数组
+        float array[] = {1, 0, 0, 0, 0,
+                0, 1, 0, 0, 0,
+                0, 0, 1, 0, 0,
+                0, 0, 0, 1, 0};
+        cm.set(array);
+        mColorMatrixFilter = new ColorMatrixColorFilter(cm);
+        mMatrix = new Matrix();
     }
 
     @Override
@@ -178,6 +307,12 @@ public class PageView extends View {
 
         switch (event.getAction()) {
             case MotionEvent.ACTION_DOWN:
+                mTouchX = event.getX();
+                mTouchY = event.getY();
+                calcCornerXY(mTouchX, mTouchY);
+                invalidate();
+                break;
+            case MotionEvent.ACTION_MOVE:
                 mTouchX = event.getX();
                 mTouchY = event.getY();
                 calcCornerXY(mTouchX, mTouchY);
@@ -301,6 +436,7 @@ public class PageView extends View {
      * 求解直线P1P2和直线P3P4的交点坐标
      */
     public PointF getCross(PointF P1, PointF P2, PointF P3, PointF P4) {
+        //将之前求得的 a,e,c,j四个点带入上式则可以求出 b. 同理可求k点
         PointF CrossP = new PointF();
         // 二元函数通式： y=ax+b
         float a1 = (P2.y - P1.y) / (P2.x - P1.x);
